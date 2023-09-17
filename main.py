@@ -1,4 +1,5 @@
 import numpy as np
+from tqdm.notebook import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
@@ -128,20 +129,27 @@ class Nonogram:
         self.sol = None
         self.n_constraints = 0
 
-    def solve(self):
+    def solve(self, progress_bar=False):
         self.sol = 0.5 * np.ones([len(self.rows), len(self.cols)])
         updates = set(self.rows + self.cols)
-        while updates:
-            array = min(updates, key=lambda arr: arr.n_combinations)
-            updates.discard(array)
-            new_constraints = array.find_constraints()
-            for idx, value in new_constraints.items():
-                grid_idx = array.grid_idx(idx)
-                self.sol[grid_idx] = value
-                affected_array = self.cols[idx] if type(array) is Row else self.rows[idx]
-                affected_array.set_constraint(array.idx, value)
-                updates.add(affected_array)
-            self.n_constraints += len(new_constraints)
+        n_slots = int.__mul__(*self.sol.shape)
+        gen = tqdm(range(n_slots)) if progress_bar else range(n_slots)
+        for i in gen:
+            if i < self.n_constraints:
+                continue
+            while updates:
+                array = min(updates, key=lambda arr: arr.n_combinations)
+                updates.discard(array)
+                new_constraints = array.find_constraints()
+                for idx, value in new_constraints.items():
+                    grid_idx = array.grid_idx(idx)
+                    self.sol[grid_idx] = value
+                    affected_array = self.cols[idx] if type(array) is Row else self.rows[idx]
+                    affected_array.set_constraint(array.idx, value)
+                    updates.add(affected_array)
+                if new_constraints:
+                    self.n_constraints += len(new_constraints)
+                    break
 
     def preview(self):
         plt.imshow(self.sol, cmap='Greys')
